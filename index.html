@@ -1,112 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Modding Infos</title>
-  <style>
-    body {
-      background: #121212;
-      color: #eee;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background: #1f1f1f;
-      padding: 20px;
-      text-align: center;
-      border-bottom: 2px solid #0ff;
-    }
-    header h1 {
-      font-size: 3rem;
-      color: #0ff;
-      text-shadow: 0 0 10px #0ff;
-    }
-    .content {
-      padding: 20px;
-      max-width: 800px;
-      margin: auto;
-    }
-    .post {
-      background: #1f1f1f;
-      margin-bottom: 20px;
-      padding: 15px;
-      border: 1px solid #333;
-      border-left: 4px solid #0ff;
-    }
-    form {
-      background: #1f1f1f;
-      padding: 20px;
-      border: 1px solid #333;
-    }
-    input, textarea {
-      width: 100%;
-      margin-bottom: 10px;
-      padding: 10px;
-      background: #000;
-      border: 1px solid #333;
-      color: #0ff;
-    }
-    button {
-      background: #0ff;
-      border: none;
-      color: #000;
-      padding: 10px 20px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    footer {
-      text-align: center;
-      padding: 20px;
-      border-top: 2px solid #0ff;
-      margin-top: 40px;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Modding Infos - Made by Jay</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+<style>
+body { background: #121212; color: #eee; font-family: sans-serif; margin: 0; padding: 0; }
+header { text-align: center; padding: 20px; background: #1f1f1f; border-bottom: 2px solid #0ff; }
+header h1 { font-size: 2rem; color: #0ff; }
+.container { max-width: 600px; margin: auto; padding: 20px; }
+form, .post, .comments { background: #1f1f1f; margin-bottom: 20px; padding: 15px; border-left: 4px solid #0ff; }
+input, textarea, button { width: 100%; padding: 10px; margin: 5px 0; background: #000; border: 1px solid #333; color: #0ff; }
+button { background: #0ff; color: #000; cursor: pointer; }
+.comment { border-top: 1px solid #333; padding-top: 5px; margin-top: 5px; }
+footer { text-align: center; padding: 10px; color: #0ff; }
+</style>
 </head>
 <body>
-  <header>
-    <h1>Modding Infos</h1>
-    <p>Share your modding stuff and info here!</p>
-  </header>
+<header>
+  <h1>Modding Infos</h1>
+  <p>Made by Jay</p>
+</header>
 
-  <div class="content">
-    <h2>Latest Mods</h2>
-    <div id="posts">
-      <!-- Posts will show up here -->
-    </div>
+<div class="container">
+  <form id="postForm">
+    <input type="text" id="title" placeholder="Mod Title" required>
+    <textarea id="description" placeholder="Mod Description" required></textarea>
+    <input type="text" id="author" placeholder="Your Name" required>
+    <button type="submit">Post Mod</button>
+  </form>
 
-    <h2>Post Your Mod Info</h2>
-    <form id="modForm">
-      <input type="text" id="title" placeholder="Mod Title" required />
-      <textarea id="description" placeholder="Mod Description" required></textarea>
-      <input type="text" id="author" placeholder="Your Name" required />
-      <button type="submit">Post Mod</button>
-    </form>
-  </div>
+  <div id="posts"></div>
+</div>
 
-  <footer>
-    Made by Jay
-  </footer>
+<footer>Made by Jay</footer>
 
-  <script>
-    const form = document.getElementById('modForm');
-    const posts = document.getElementById('posts');
+<script>
+// Your Firebase config:
+const firebaseConfig = 731423599015;
 
-    form.addEventListener('submit', function(e) {
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Reference
+const postForm = document.getElementById('postForm');
+const postsDiv = document.getElementById('posts');
+
+// Submit Post
+postForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const title = document.getElementById('title').value;
+  const description = document.getElementById('description').value;
+  const author = document.getElementById('author').value;
+
+  await db.collection('posts').add({
+    title,
+    description,
+    author,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  postForm.reset();
+});
+
+// Display Posts and Comments
+db.collection('posts').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+  postsDiv.innerHTML = '';
+  snapshot.forEach(doc => {
+    const post = doc.data();
+    const postId = doc.id;
+
+    const postElement = document.createElement('div');
+    postElement.className = 'post';
+    postElement.innerHTML = `
+      <h3>${post.title}</h3>
+      <p>${post.description}</p>
+      <small>Posted by: ${post.author}</small>
+      <div class="comments" id="comments-${postId}"></div>
+      <form id="commentForm-${postId}">
+        <input type="text" placeholder="Your Name" required id="commentAuthor-${postId}">
+        <input type="text" placeholder="Your Comment" required id="commentContent-${postId}">
+        <button type="submit">Comment</button>
+      </form>
+    `;
+
+    postsDiv.appendChild(postElement);
+
+    // Load Comments
+    const commentsDiv = document.getElementById(`comments-${postId}`);
+    db.collection('posts').doc(postId).collection('comments').orderBy('createdAt', 'desc')
+      .onSnapshot(commentSnap => {
+        commentsDiv.innerHTML = '';
+        commentSnap.forEach(commentDoc => {
+          const comment = commentDoc.data();
+          const commentEl = document.createElement('div');
+          commentEl.className = 'comment';
+          commentEl.innerHTML = `<strong>${comment.author}</strong>: ${comment.content}`;
+          commentsDiv.appendChild(commentEl);
+        });
+      });
+
+    // Handle Comment Form Submission
+    const commentForm = document.getElementById(`commentForm-${postId}`);
+    commentForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const title = document.getElementById('title').value;
-      const description = document.getElementById('description').value;
-      const author = document.getElementById('author').value;
+      const author = document.getElementById(`commentAuthor-${postId}`).value;
+      const content = document.getElementById(`commentContent-${postId}`).value;
 
-      const post = document.createElement('div');
-      post.className = 'post';
-      post.innerHTML = `<h3>${title}</h3><p>${description}</p><small>Posted by: ${author}</small>`;
+      await db.collection('posts').doc(postId).collection('comments').add({
+        author,
+        content,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
 
-      posts.prepend(post);
-
-      form.reset();
+      commentForm.reset();
     });
-  </script>
+  });
+});
+</script>
 </body>
 </html>
