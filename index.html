@@ -2,20 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Modding Infos - Made by Jay</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
 <style>
-body { background: #121212; color: #eee; font-family: sans-serif; margin: 0; padding: 0; }
-header { text-align: center; padding: 20px; background: #1f1f1f; border-bottom: 2px solid #0ff; }
-header h1 { font-size: 2rem; color: #0ff; }
-.container { max-width: 600px; margin: auto; padding: 20px; }
-form, .post, .comments { background: #1f1f1f; margin-bottom: 20px; padding: 15px; border-left: 4px solid #0ff; }
-input, textarea, button { width: 100%; padding: 10px; margin: 5px 0; background: #000; border: 1px solid #333; color: #0ff; }
-button { background: #0ff; color: #000; cursor: pointer; }
-.comment { border-top: 1px solid #333; padding-top: 5px; margin-top: 5px; }
-footer { text-align: center; padding: 10px; color: #0ff; }
+  body { background: #121212; color: #eee; font-family: Arial, sans-serif; margin: 0; padding: 0; }
+  header { text-align: center; padding: 20px; background: #1f1f1f; border-bottom: 2px solid #0ff; }
+  header h1 { color: #0ff; margin: 0; }
+  .container { max-width: 600px; margin: 20px auto; padding: 20px; background: #1f1f1f; border-left: 4px solid #0ff; }
+  input, textarea, button { width: 100%; padding: 10px; margin: 8px 0; background: #000; border: 1px solid #333; color: #0ff; }
+  button { background: #0ff; color: #000; cursor: pointer; border: none; }
+  .post { margin-bottom: 30px; }
+  .comments { margin-top: 15px; padding-left: 10px; border-left: 2px solid #0ff; }
+  .comment { margin-top: 8px; border-top: 1px solid #333; padding-top: 6px; }
+  footer { text-align: center; padding: 15px; color: #0ff; background: #1f1f1f; margin-top: 40px; }
 </style>
 </head>
 <body>
@@ -26,9 +27,9 @@ footer { text-align: center; padding: 10px; color: #0ff; }
 
 <div class="container">
   <form id="postForm">
-    <input type="text" id="title" placeholder="Mod Title" required>
+    <input type="text" id="title" placeholder="Mod Title" required />
     <textarea id="description" placeholder="Mod Description" required></textarea>
-    <input type="text" id="author" placeholder="Your Name" required>
+    <input type="text" id="author" placeholder="Your Name" required />
     <button type="submit">Post Mod</button>
   </form>
 
@@ -38,61 +39,65 @@ footer { text-align: center; padding: 10px; color: #0ff; }
 <footer>Made by Jay</footer>
 
 <script>
-// Your Firebase config:
-const firebaseConfig = 731423599015;
+  // Paste your Firebase config here:
+  const firebaseConfig = {
+    // YOUR FIREBASE CONFIG OBJECT HERE
+  };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+  // Initialize Firebase
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-// Reference
-const postForm = document.getElementById('postForm');
-const postsDiv = document.getElementById('posts');
+  const postForm = document.getElementById('postForm');
+  const postsDiv = document.getElementById('posts');
 
-// Submit Post
-postForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const title = document.getElementById('title').value;
-  const description = document.getElementById('description').value;
-  const author = document.getElementById('author').value;
+  // Submit new mod post
+  postForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('title').value.trim();
+    const description = document.getElementById('description').value.trim();
+    const author = document.getElementById('author').value.trim();
 
-  await db.collection('posts').add({
-    title,
-    description,
-    author,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    if (!title || !description || !author) return alert('Please fill all fields');
+
+    await db.collection('posts').add({
+      title,
+      description,
+      author,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    postForm.reset();
   });
 
-  postForm.reset();
-});
+  // Load and display posts & comments
+  db.collection('posts').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+    postsDiv.innerHTML = '';
+    snapshot.forEach(doc => {
+      const post = doc.data();
+      const postId = doc.id;
 
-// Display Posts and Comments
-db.collection('posts').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
-  postsDiv.innerHTML = '';
-  snapshot.forEach(doc => {
-    const post = doc.data();
-    const postId = doc.id;
+      const postEl = document.createElement('div');
+      postEl.className = 'post';
+      postEl.innerHTML = `
+        <h3>${post.title}</h3>
+        <p>${post.description}</p>
+        <small>Posted by: ${post.author}</small>
 
-    const postElement = document.createElement('div');
-    postElement.className = 'post';
-    postElement.innerHTML = `
-      <h3>${post.title}</h3>
-      <p>${post.description}</p>
-      <small>Posted by: ${post.author}</small>
-      <div class="comments" id="comments-${postId}"></div>
-      <form id="commentForm-${postId}">
-        <input type="text" placeholder="Your Name" required id="commentAuthor-${postId}">
-        <input type="text" placeholder="Your Comment" required id="commentContent-${postId}">
-        <button type="submit">Comment</button>
-      </form>
-    `;
+        <div class="comments" id="comments-${postId}"></div>
 
-    postsDiv.appendChild(postElement);
+        <form id="commentForm-${postId}">
+          <input type="text" id="commentAuthor-${postId}" placeholder="Your Name" required />
+          <input type="text" id="commentContent-${postId}" placeholder="Your Comment" required />
+          <button type="submit">Comment</button>
+        </form>
+      `;
 
-    // Load Comments
-    const commentsDiv = document.getElementById(`comments-${postId}`);
-    db.collection('posts').doc(postId).collection('comments').orderBy('createdAt', 'desc')
-      .onSnapshot(commentSnap => {
+      postsDiv.appendChild(postEl);
+
+      // Load comments for this post
+      const commentsDiv = document.getElementById(`comments-${postId}`);
+      db.collection('posts').doc(postId).collection('comments').orderBy('createdAt', 'desc').onSnapshot(commentSnap => {
         commentsDiv.innerHTML = '';
         commentSnap.forEach(commentDoc => {
           const comment = commentDoc.data();
@@ -103,23 +108,25 @@ db.collection('posts').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
         });
       });
 
-    // Handle Comment Form Submission
-    const commentForm = document.getElementById(`commentForm-${postId}`);
-    commentForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const author = document.getElementById(`commentAuthor-${postId}`).value;
-      const content = document.getElementById(`commentContent-${postId}`).value;
+      // Comment form handler
+      const commentForm = document.getElementById(`commentForm-${postId}`);
+      commentForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const commentAuthor = document.getElementById(`commentAuthor-${postId}`).value.trim();
+        const commentContent = document.getElementById(`commentContent-${postId}`).value.trim();
 
-      await db.collection('posts').doc(postId).collection('comments').add({
-        author,
-        content,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        if (!commentAuthor || !commentContent) return alert('Please fill all comment fields');
+
+        await db.collection('posts').doc(postId).collection('comments').add({
+          author: commentAuthor,
+          content: commentContent,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        commentForm.reset();
       });
-
-      commentForm.reset();
     });
   });
-});
 </script>
 </body>
 </html>
