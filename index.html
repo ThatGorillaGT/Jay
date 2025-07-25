@@ -41,7 +41,7 @@
 <script>
   // Paste your Firebase config here:
   const firebaseConfig = {
- 1:731423599015:web:5121975087f8e509286e82
+   1:731423599015:web:5121975087f8e509286e82
   };
 
   // Initialize Firebase
@@ -70,12 +70,15 @@
     postForm.reset();
   });
 
-  // Load and display posts & comments
+  // Load and display posts & comments with fix for immediate display
   db.collection('posts').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
     postsDiv.innerHTML = '';
     snapshot.forEach(doc => {
       const post = doc.data();
       const postId = doc.id;
+
+      // Fix: fallback createdAt if missing
+      if (!post.createdAt) post.createdAt = { toDate: () => new Date() };
 
       const postEl = document.createElement('div');
       postEl.className = 'post';
